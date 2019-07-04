@@ -1,0 +1,4 @@
+# url is the URL of TP-Link router
+# password is the password to access the router page
+url=192.168.1.1
+password=superSecretPassword
