@@ -13,6 +13,7 @@ import java.util.Properties;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 
 public class RebootTplink {
@@ -39,7 +40,7 @@ public class RebootTplink {
             checkForInet = props.getProperty("checkForInet");
 
             System.out.println("routerURL is: " + routerURL);
-            System.out.println("pass is: " + password);
+//            System.out.println("pass is: " + password);
             System.out.println("host to ping is: " + hostToPing);
             System.out.println("Check for internet?: " + checkForInet);     // 1 means yes, everything else no
             reader.close();
@@ -114,10 +115,12 @@ public class RebootTplink {
     public static void main(String[] args) throws InterruptedException, IOException {
 
         // Enabling file logging functionality
-        Logger logger = Logger.getLogger("org.a3");
+        Logger logger = Logger.getLogger(RebootTplink.class.getName()); // g
         // Create an instance of FileHandler that write log to a file called
-        // app.log. Each new message will be appended at the at of the log file.
+        // reboots.log. Each new message will be appended at the at of the log file.
         FileHandler fileHandler = new FileHandler("reboots.log", true);
+        SimpleFormatter formatterTxt = new SimpleFormatter();
+        fileHandler.setFormatter(formatterTxt);
         logger.addHandler(fileHandler);
 
 
@@ -127,13 +130,14 @@ public class RebootTplink {
         // verifying if config file says to check for Internet connection
         if (checkForInet.equals("1")) {
             if (checkInternet(hostToPing)) {
-                // if there is a Internet connection exit
+                // There is a Internet connection
+                // Log a message to file
                 if (logger.isLoggable(Level.INFO)) {
                     logger.info("No Router Reboot needed - there is Internet connection");
                 }
-                System.exit(0);
+                System.exit(0); // exit the program
             } else {
-
+                // Log a message to file
                 if (logger.isLoggable(Level.WARNING)) {
                     logger.warning("Router Reboot - Internet connection check fail!");
                 }
@@ -144,6 +148,7 @@ public class RebootTplink {
         } else {
             // Check for Internet is skipped -> restart the router
             restartRouter(routerURL, password);
+            // Log a message to file
             if (logger.isLoggable(Level.WARNING)) {
                 logger.warning("Router Reboot - Didn't check for Internet connection!");
             }
