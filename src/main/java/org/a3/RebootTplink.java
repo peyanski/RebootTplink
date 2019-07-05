@@ -119,8 +119,8 @@ public class RebootTplink {
         // Create an instance of FileHandler that write log to a file called
         // reboots.log. Each new message will be appended at the at of the log file.
         FileHandler fileHandler = new FileHandler("reboots.log", true);
-        SimpleFormatter formatterTxt = new SimpleFormatter();
-        fileHandler.setFormatter(formatterTxt);
+        SimpleFormatter formatterTxt = new SimpleFormatter();   // using SimpleFormatter
+        fileHandler.setFormatter(formatterTxt);                 // to log less text in file and not to be XML
         logger.addHandler(fileHandler);
 
 
