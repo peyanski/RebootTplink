@@ -1,4 +1,8 @@
-# url is the URL of TP-Link router
+# routerURL is the URL of TP-Link router
 # password is the password to access the router page
-url=192.168.1.1
+# checkForInet - should we check for Internet before router restart? 1 means yes, everything else means no
+# hostToPing - which host to ping to check if there is internet
+routerURL=http://192.168.1.1
 password=superSecretPassword
+checkForInet=1
+hostToPing=www.google.com

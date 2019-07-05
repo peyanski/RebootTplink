@@ -8,32 +8,40 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.util.Properties;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 
 public class RebootTplink {
 
-/*    private static String url = "http://192.168.1.1";           // URL of the TPLink router admin page
-    private static String password = "***REMOVED***";                  // password for authentication
-    private static    // using Chrome driver*/
-    private static String url = "";           // URL of the TPLink router admin page
-    private static String password = "";
+
+    private static String routerURL = "";               // URL of the TPLink router admin page
+    private static String password = "";                // password to access the router admin page
+    private static String checkForInet = "";            // Should you check for Internet connection? 1 for yes
+    private static String hostToPing = "";              // which host to ping to check for Internet connection
 
 
 
-    public static void main(String[] args) throws InterruptedException, IOException {
-
+    private static void readConfigFile() {
+        // read the content of config.properties file and assign the values to variables.
         File configFile = new File("config.properties");
         try {
             FileReader reader = new FileReader(configFile);
             Properties props = new Properties();
             props.load(reader);
 
-            url = props.getProperty("url");
+            routerURL = props.getProperty("routerURL");
             password = props.getProperty("password");
+            hostToPing = props.getProperty(("hostToPing"));
+            checkForInet = props.getProperty("checkForInet");
 
-            System.out.println("url is: " + url);
+            System.out.println("routerURL is: " + routerURL);
             System.out.println("pass is: " + password);
+            System.out.println("host to ping is: " + hostToPing);
+            System.out.println("Check for internet?: " + checkForInet);     // 1 means yes, everything else no
             reader.close();
         } catch (FileNotFoundException ex) {
             // file does not exist
@@ -42,58 +50,109 @@ public class RebootTplink {
         } catch (IOException ex) {
             // I/O error
         }
+    }
 
+    private static boolean checkInternet(String hostToPing) throws IOException {
 
-
-
-        InetAddress address = InetAddress.getByName("www.google.com"); // get the IP of the host
-        if (address.isReachable(10000)) { // check if the address is Reachable
-
+        try {
+            InetAddress address = InetAddress.getByName(hostToPing); // get the IP of the host
+            address.isReachable(10000);
             System.out.println(address + " is reachable!");
-            System.exit(1); // exit the program and don't restart the router
+            return true;
+
+        } catch (UnknownHostException uhe) {
+            uhe.printStackTrace();
+        }
+        return false;
+
+    }
+
+
+
+    private static void restartRouter(String routerURL, String password) throws InterruptedException {
+        ChromeDriver driver = new ChromeDriver();
+        // open the URL
+        driver.get(routerURL);
+
+        // Find password textbox
+        WebElement element=driver.findElement(By.id("pc-login-password"));
+        element.sendKeys(password);
+        Thread.sleep(1000);         // wait 1 sec
+
+        // click on login button
+        WebElement button=driver.findElement(By.id("pc-login-btn"));
+        button.click();
+        Thread.sleep(4000);         // wait 4 sec
+
+        // confirm login
+        try {
+            // Check the presence of alert
+            WebElement confirmYes=driver.findElement(By.id("confirm-yes"));
+            confirmYes.click();
+
+
+        } catch (NoSuchElementException ex) {
+            // Alert not present
+            ex.printStackTrace();
+        }
+        Thread.sleep(4000);
+
+        // click on reboot button in upper right
+        WebElement reboot=driver.findElement(By.id("topReboot"));
+        reboot.click();
+        Thread.sleep(4000);
+
+        // click on yes button to confirm reboot
+        WebElement confirm=driver.findElement(By.cssSelector("button.button-button.green.pure-button.btn-msg." +
+                "btn-msg-ok.btn-confirm"));
+        confirm.click();
+        Thread.sleep(2000);
+        driver.quit();
+    }
+
+
+    public static void main(String[] args) throws InterruptedException, IOException {
+
+        // Enabling file logging functionality
+        Logger logger = Logger.getLogger("org.a3");
+        // Create an instance of FileHandler that write log to a file called
+        // app.log. Each new message will be appended at the at of the log file.
+        FileHandler fileHandler = new FileHandler("reboots.log", true);
+        logger.addHandler(fileHandler);
+
+
+        // read all values from config file
+        readConfigFile();
+
+        // verifying if config file says to check for Internet connection
+        if (checkForInet.equals("1")) {
+            if (checkInternet(hostToPing)) {
+                // if there is a Internet connection exit
+                if (logger.isLoggable(Level.INFO)) {
+                    logger.info("No Router Reboot needed - there is Internet connection");
+                }
+                System.exit(0);
+            } else {
+
+                if (logger.isLoggable(Level.WARNING)) {
+                    logger.warning("Router Reboot - Internet connection check fail!");
+                }
+                // No Internet -> reatart the router
+                restartRouter(routerURL, password);
+            }
 
         } else {
-
-            ChromeDriver driver = new ChromeDriver();
-            // open the URL
-            driver.get(url);
-
-            // Find password textbox
-            WebElement element=driver.findElement(By.id("pc-login-password"));
-            element.sendKeys(password);
-            Thread.sleep(1000);         // wait 1 sec
-
-            // click on login button
-            WebElement button=driver.findElement(By.id("pc-login-btn"));
-            button.click();
-            Thread.sleep(4000);         // wait 4 sec
-
-            // confirm login
-            try {
-                // Check the presence of alert
-                WebElement confirmYes=driver.findElement(By.id("confirm-yes"));
-                confirmYes.click();
-
-
-            } catch (NoSuchElementException ex) {
-                // Alert not present
-                ex.printStackTrace();
+            // Check for Internet is skipped -> restart the router
+            restartRouter(routerURL, password);
+            if (logger.isLoggable(Level.WARNING)) {
+                logger.warning("Router Reboot - Didn't check for Internet connection!");
             }
-            Thread.sleep(4000);
-
-            // click on reboot button in upper right
-            WebElement reboot=driver.findElement(By.id("topReboot"));
-            reboot.click();
-            Thread.sleep(4000);
-
-            // click on yes button to confirm reboot
-            WebElement confirm=driver.findElement(By.cssSelector("button.button-button.green.pure-button.btn-msg." +
-                    "btn-msg-ok.btn-confirm"));
-            confirm.click();
-            Thread.sleep(2000);
-            driver.quit();
-
         }
+
+
+
+
+
 
     }
 
